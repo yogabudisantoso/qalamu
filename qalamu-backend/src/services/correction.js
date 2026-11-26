@@ -1,4 +1,5 @@
-// Menganalisis foto tulisan Arab. Jika ANTHROPIC_API_KEY kosong, pakai data mock.
+// Menganalisis foto tulisan Arab. Jika GEMINI_API_KEY/ANTHROPIC_API_KEY kosong, pakai data mock.
+const { GoogleGenAI } = require('@google/genai');
 const Anthropic = require('@anthropic-ai/sdk');
 
 // Kategori kesalahan; dipakai juga oleh layar Laporan peningkatan
@@ -85,11 +86,14 @@ function normalizeResult(raw) {
 }
 
 async function analyzeHandwriting(buffer, mimeType) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!geminiApiKey && !anthropicApiKey) {
     return {
       recognized_text: 'ذَهَبَ الْوَلَدُ سَرِيعًا إِلَى الْمَدْرَسَةُ',
       corrected_text: 'ذَهَبَ الْوَلَدُ سَرِيعًا إِلَى الْمَدْرَسَةِ',
-      feedback: 'Mode mock: isi ANTHROPIC_API_KEY di .env untuk koreksi sungguhan.',
+      feedback: 'Mode mock: isi GEMINI_API_KEY di .env untuk koreksi sungguhan.',
       score: 80,
       total_words: 5,
       correct_words: 4,
@@ -104,25 +108,56 @@ async function analyzeHandwriting(buffer, mimeType) {
     };
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const response = await client.messages.create({
-    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
-    max_tokens: 1500,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mimeType, data: buffer.toString('base64') },
-          },
-          { type: 'text', text: PROMPT },
-        ],
-      },
-    ],
-  });
+  let text = '';
 
-  const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+  if (geminiApiKey) {
+    const client = new GoogleGenAI({ apiKey: geminiApiKey, apiVersion: 'v1beta' });
+    // Model terbaik untuk OCR tulisan tangan Arab + analisis tata bahasa cepat & efisien
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const response = await client.models.generateContent({
+      model,
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType,
+                data: buffer.toString('base64'),
+              },
+            },
+            { text: PROMPT },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    text = response.text || '';
+  } else {
+    const client = new Anthropic({ apiKey: anthropicApiKey });
+    const response = await client.messages.create({
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+      max_tokens: 1500,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mimeType, data: buffer.toString('base64') },
+            },
+            { type: 'text', text: PROMPT },
+          ],
+        },
+      ],
+    });
+
+    text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+  }
+
   return normalizeResult(extractJson(text));
 }
 

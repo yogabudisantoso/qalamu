@@ -8,7 +8,7 @@ Node.js **22.13 atau lebih baru** (memakai modul bawaan `node:sqlite`).
 ## Menjalankan
 ```bash
 npm install
-cp .env.example .env     # lalu isi JWT_SECRET (dan ANTHROPIC_API_KEY bila ada)
+cp .env.example .env     # lalu isi JWT_SECRET (dan GEMINI_API_KEY bila ada)
 npm run dev
 ```
 Server: http://localhost:3000
@@ -30,7 +30,12 @@ Header untuk endpoint bertanda 🔒: `Authorization: Bearer <token>`
 | Laporan peningkatan 🔒 | GET | /api/report | - |
 | Hapus 🔒 | DELETE | /api/corrections/:id | - |
 
-Tanpa ANTHROPIC_API_KEY, endpoint koreksi mengembalikan data mock.
+Tanpa `GEMINI_API_KEY` (atau `ANTHROPIC_API_KEY`), endpoint koreksi mengembalikan data mock.
+
+### Model Gemini yang Direkomendasikan
+Fitur koreksi menganalisis foto tulisan tangan Bahasa Arab, membaca harakat, serta mengecek tata bahasa (nahwu & sharaf) dan kaidah penulisan.
+- **`gemini-2.5-flash`** (Default): Model multimodal terbaik untuk OCR gambar, sangat cepat (latensi rendah), akurat mengenali tanda baca/harakat Arab, dan sangat hemat biaya/kuota gratis Google AI Studio.
+- **`gemini-2.5-pro`**: Alternatif jika membutuhkan penalaran linguistik yang lebih mendalam untuk kalimat-kalimat Arab tingkat lanjut.
 
 ## Aturan kata sandi
 Kata sandi baru (saat daftar) minimal 8 karakter, mengandung 1 huruf besar dan 1 angka. Login tidak memeriksa aturan ini, jadi akun lama dengan sandi lama tetap bisa masuk.

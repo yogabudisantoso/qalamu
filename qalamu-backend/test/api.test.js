@@ -50,6 +50,8 @@ before(async () => {
       ...process.env,
       PORT: String(port),
       JWT_SECRET: 'rahasia-untuk-tes',
+      GEMINI_API_KEY: '',
+      GOOGLE_API_KEY: '',
       ANTHROPIC_API_KEY: '', // paksa mode mock
       QALAMU_DB_PATH: path.join(tmp, 'test.db'),
     },
